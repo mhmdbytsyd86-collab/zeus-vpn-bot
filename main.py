@@ -3,12 +3,16 @@ from telegram.ext import (
     Application,
     CommandHandler,
     CallbackQueryHandler,
-    ContextTypes
+    ContextTypes,
+    MessageHandler,
+    filters
 )
 import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CARD_NUMBER = os.getenv("CARD_NUMBER")
+
+ADMIN_ID = 5769833164
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -43,7 +47,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🥉 یک ماهه - 100GB\n"
             "🥈 سه ماهه - 300GB\n"
             "🥇 شش ماهه - 700GB\n\n"
-            "برای پرداخت گزینه 💳 پرداخت را بزنید."
+            "بعد از انتخاب پلن، از بخش 💳 پرداخت استفاده کنید."
         )
 
     elif query.data == "my_service":
@@ -54,10 +58,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "payment":
         await query.edit_message_text(
             f"💳 پرداخت\n\n"
-            f"لطفاً مبلغ پلن انتخابی را کارت به کارت کنید.\n\n"
             f"شماره کارت:\n"
             f"{CARD_NUMBER}\n\n"
-            "بعد از پرداخت، عکس رسید را ارسال کنید."
+            "بعد از پرداخت، لطفاً عکس رسید را ارسال کنید."
         )
 
     elif query.data == "support":
@@ -67,10 +70,35 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# دریافت رسید پرداخت
+async def receive_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.message.from_user
+
+    await update.message.reply_text(
+        "✅ رسید شما دریافت شد.\n"
+        "پس از بررسی، نتیجه اعلام می‌شود."
+    )
+
+    await context.bot.send_photo(
+        chat_id=ADMIN_ID,
+        photo=update.message.photo[-1].file_id,
+        caption=(
+            "📩 رسید پرداخت جدید\n\n"
+            f"👤 نام: {user.first_name}\n"
+            f"🆔 آیدی: {user.id}\n"
+            f"👤 Username: @{user.username}"
+        )
+    )
+
+
 app = Application.builder().token(BOT_TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(button_handler))
+
+# دریافت عکس رسید
+app.add_handler(MessageHandler(filters.PHOTO, receive_receipt))
+
 
 if __name__ == "__main__":
     app.run_polling()
