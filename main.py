@@ -16,6 +16,7 @@ ADMIN_ID = 5769833164
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     keyboard = [
         [
             InlineKeyboardButton("🛒 خرید اشتراک", callback_data="buy"),
@@ -27,57 +28,129 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ]
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_text(
         "👋 سلام!\n\n"
         "به ربات Zeus VPN خوش آمدید.\n"
         "لطفاً یک گزینه را انتخاب کنید:",
-        reply_markup=reply_markup
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     query = update.callback_query
     await query.answer()
 
+
     if query.data == "buy":
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "🥉 یک ماهه - 100GB",
+                    callback_data="payment"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🥈 سه ماهه - 300GB",
+                    callback_data="payment"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🥇 شش ماهه - 700GB",
+                    callback_data="payment"
+                )
+            ]
+        ]
+
         await query.edit_message_text(
-            "🛒 خرید اشتراک\n\n"
-            "🥉 یک ماهه - 100GB\n"
-            "🥈 سه ماهه - 300GB\n"
-            "🥇 شش ماهه - 700GB\n\n"
-            "بعد از انتخاب پلن، از بخش 💳 پرداخت استفاده کنید."
+            "🛒 انتخاب پلن:\n\n"
+            "یکی از پلن‌ها را انتخاب کنید:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
+
     elif query.data == "my_service":
+
         await query.edit_message_text(
             "📦 شما هنوز سرویسی ندارید."
         )
 
+
     elif query.data == "payment":
+
         await query.edit_message_text(
             f"💳 پرداخت\n\n"
             f"شماره کارت:\n"
             f"{CARD_NUMBER}\n\n"
-            "بعد از پرداخت، لطفاً عکس رسید را ارسال کنید."
+            "بعد از پرداخت، عکس رسید را ارسال کنید."
         )
 
+
     elif query.data == "support":
+
         await query.edit_message_text(
             "🆘 پشتیبانی\n\n"
             "پیام خود را ارسال کنید."
         )
 
 
-# دریافت رسید پرداخت
+    elif query.data.startswith("approve_"):
+
+        user_id = query.data.split("_")[1]
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="✅ پرداخت شما تایید شد.\nسرویس شما به‌زودی آماده می‌شود."
+        )
+
+        await query.edit_message_caption(
+            caption="✅ پرداخت تایید شد."
+        )
+
+
+    elif query.data.startswith("reject_"):
+
+        user_id = query.data.split("_")[1]
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="❌ پرداخت شما رد شد.\nلطفاً با پشتیبانی تماس بگیرید."
+        )
+
+        await query.edit_message_caption(
+            caption="❌ پرداخت رد شد."
+        )
+
+
+
 async def receive_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     user = update.message.from_user
+
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "✅ تایید پرداخت",
+                callback_data=f"approve_{user.id}"
+            ),
+
+            InlineKeyboardButton(
+                "❌ رد پرداخت",
+                callback_data=f"reject_{user.id}"
+            )
+        ]
+    ]
+
 
     await update.message.reply_text(
         "✅ رسید شما دریافت شد.\n"
-        "پس از بررسی، نتیجه اعلام می‌شود."
+        "پس از بررسی نتیجه اعلام می‌شود."
     )
+
 
     await context.bot.send_photo(
         chat_id=ADMIN_ID,
@@ -86,18 +159,25 @@ async def receive_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📩 رسید پرداخت جدید\n\n"
             f"👤 نام: {user.first_name}\n"
             f"🆔 آیدی: {user.id}\n"
-            f"👤 Username: @{user.username}"
-        )
+            f"Username: @{user.username}"
+        ),
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 
 app = Application.builder().token(BOT_TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(button_handler))
 
-# دریافت عکس رسید
-app.add_handler(MessageHandler(filters.PHOTO, receive_receipt))
+app.add_handler(CommandHandler("start", start))
+
+app.add_handler(
+    CallbackQueryHandler(button_handler)
+)
+
+app.add_handler(
+    MessageHandler(filters.PHOTO, receive_receipt)
+)
 
 
 if __name__ == "__main__":
