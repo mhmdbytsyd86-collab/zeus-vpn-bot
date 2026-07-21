@@ -9,6 +9,9 @@ from telegram.ext import (
 )
 import os
 
+from xui_api import create_vless_user
+
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CARD_NUMBER = os.getenv("CARD_NUMBER")
 
@@ -34,6 +37,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "لطفاً یک گزینه را انتخاب کنید:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,15 +71,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "🛒 انتخاب پلن:\n\n"
-            "یکی از پلن‌ها را انتخاب کنید:",
+            "پلن مورد نظر را انتخاب کنید:",
             reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-
-    elif query.data == "my_service":
-
-        await query.edit_message_text(
-            "📦 شما هنوز سرویسی ندارید."
         )
 
 
@@ -85,7 +82,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 پرداخت\n\n"
             f"شماره کارت:\n"
             f"{CARD_NUMBER}\n\n"
-            "بعد از پرداخت، عکس رسید را ارسال کنید."
+            "بعد از پرداخت عکس رسید را ارسال کنید."
+        )
+
+
+    elif query.data == "my_service":
+
+        await query.edit_message_text(
+            "📦 شما هنوز سرویسی ندارید."
         )
 
 
@@ -101,28 +105,51 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_id = query.data.split("_")[1]
 
-        await context.bot.send_message(
-            chat_id=user_id,
-            text="✅ پرداخت شما تایید شد.\nسرویس شما به‌زودی آماده می‌شود."
-        )
 
-        await query.edit_message_caption(
-            caption="✅ پرداخت تایید شد."
-        )
+        user = create_vless_user()
+
+
+        if user:
+
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "✅ پرداخت شما تایید شد.\n\n"
+                    "🔐 اطلاعات سرویس:\n\n"
+                    f"UUID:\n{user['uuid']}\n\n"
+                    f"Username:\n{user['email']}"
+                )
+            )
+
+
+            await query.edit_message_caption(
+                caption="✅ پرداخت تایید شد.\n\n🔗 کاربر در حال ساخت است."
+            )
+
+
+        else:
+
+            await query.edit_message_caption(
+                caption="⚠️ خطا در اتصال به پنل 3x-ui"
+            )
+
 
 
     elif query.data.startswith("reject_"):
 
         user_id = query.data.split("_")[1]
 
+
         await context.bot.send_message(
             chat_id=user_id,
-            text="❌ پرداخت شما رد شد.\nلطفاً با پشتیبانی تماس بگیرید."
+            text="❌ پرداخت شما رد شد."
         )
+
 
         await query.edit_message_caption(
             caption="❌ پرداخت رد شد."
         )
+
 
 
 
@@ -148,7 +175,7 @@ async def receive_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "✅ رسید شما دریافت شد.\n"
-        "پس از بررسی نتیجه اعلام می‌شود."
+        "پس از بررسی اعلام می‌شود."
     )
 
 
@@ -166,6 +193,7 @@ async def receive_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+
 app = Application.builder().token(BOT_TOKEN).build()
 
 
@@ -178,6 +206,7 @@ app.add_handler(
 app.add_handler(
     MessageHandler(filters.PHOTO, receive_receipt)
 )
+
 
 
 if __name__ == "__main__":
