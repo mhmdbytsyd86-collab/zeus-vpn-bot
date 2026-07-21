@@ -20,21 +20,33 @@ def login_panel():
         "password": PANEL_PASSWORD
     }
 
-    r = session.post(url, data=data)
+    try:
+        r = session.post(url, data=data, timeout=10)
 
-    return r.status_code == 200
+        print("LOGIN STATUS:", r.status_code)
+        print("LOGIN RESPONSE:", r.text)
+
+        return r.status_code == 200
+
+    except Exception as e:
+        print("LOGIN ERROR:", e)
+        return False
 
 
 
 def create_vless_user():
 
     if not login_panel():
+        print("Panel login failed")
         return None
 
 
     client_uuid = str(uuid.uuid4())
 
     email = f"user{int(time.time())}"
+
+
+    print("NEW USER UUID:", client_uuid)
 
 
     return {
