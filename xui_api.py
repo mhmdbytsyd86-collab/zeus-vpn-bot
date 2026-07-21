@@ -1,5 +1,7 @@
 import os
 import requests
+import uuid
+import time
 
 
 PANEL_URL = os.getenv("PANEL_URL")
@@ -18,16 +20,24 @@ def login_panel():
         "password": PANEL_PASSWORD
     }
 
-    response = session.post(url, data=data)
+    r = session.post(url, data=data)
 
-    if response.status_code == 200:
-        return True
-
-    return False
+    return r.status_code == 200
 
 
-def get_panel_status():
-    if login_panel():
-        return "✅ اتصال به پنل موفق بود"
-    else:
-        return "❌ اتصال به پنل ناموفق بود"
+
+def create_vless_user():
+
+    if not login_panel():
+        return None
+
+
+    client_uuid = str(uuid.uuid4())
+
+    email = f"user{int(time.time())}"
+
+
+    return {
+        "uuid": client_uuid,
+        "email": email
+    }
