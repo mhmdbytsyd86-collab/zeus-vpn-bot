@@ -23,13 +23,14 @@ def login_panel():
     try:
         r = session.post(url, data=data, timeout=10)
 
-        print("LOGIN STATUS:", r.status_code)
-        print("LOGIN RESPONSE:", r.text)
+        print("URL:", url)
+        print("STATUS:", r.status_code)
+        print("TEXT:", r.text[:500])
 
         return r.status_code == 200
 
     except Exception as e:
-        print("LOGIN ERROR:", e)
+        print("ERROR:", e)
         return False
 
 
@@ -46,7 +47,8 @@ def create_vless_user():
     email = f"user{int(time.time())}"
 
 
-    print("NEW USER UUID:", client_uuid)
+    print("NEW UUID:", client_uuid)
+    print("NEW EMAIL:", email)
 
 
     return {
