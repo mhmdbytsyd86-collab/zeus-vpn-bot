@@ -1,70 +1,347 @@
-import os
+# xui_api.py
+
 import requests
 import uuid
 import time
 import random
 
-PANEL_URL = os.getenv("PANEL_URL")
-PANEL_API_TOKEN = os.getenv("PANEL_API_TOKEN")
 
-session = requests.Session()
-session.headers.update({
-    "Authorization": f"Bearer {PANEL_API_TOKEN}",
-    "Content-Type": "application/json"
-})
+class XUI:
 
-def create_vless_user():
-    client_uuid = str(uuid.uuid4())
-    email = f"user{int(time.time())}"
+    def __init__(
+        self,
+        panel_url,
+        username,
+        password
+    ):
 
-    # انتخاب یک پورت تصادفی
-    port = random.randint(20000, 60000)
+        self.panel_url = panel_url.rstrip("/")
+        self.username = username
+        self.password = password
 
-    payload = {
-        "up": 0,
-        "down": 0,
-        "total": 107374182400,
-        "remark": email,
-        "enable": True,
-        "expiryTime": 0,
-        "listen": "",
-        "port": port,
-        "protocol": "vless",
-        "settings": {
-            "clients": [
-                {
-                    "id": client_uuid,
-                    "email": email,
-                    "flow": ""
-                }
-            ],
-            "decryption": "none",
-            "fallbacks": []
-        },
-        "streamSettings": {},
-        "sniffing": {
-            "enabled": True,
-            "destOverride": [
-                "http",
-                "tls"
-            ]
+        self.session = requests.Session()
+
+        self.inbounds = [
+            1,
+            2,
+            3
+        ]
+
+
+    # ----------------------
+    # LOGIN
+    # ----------------------
+
+    def login(self):
+
+        url = f"{self.panel_url}/login"
+
+        data = {
+            "username": self.username,
+            "password": self.password
         }
-    }
 
-    r = session.post(
-        f"{PANEL_URL}/panel/api/inbounds/add",
-        json=payload,
-        timeout=20
-    )
+        r = self.session.post(
+            url,
+            json=data,
+            timeout=15
+        )
 
-    print(r.status_code)
-    print(r.text)
 
-    if r.status_code == 200:
-        return {
-            "uuid": client_uuid,
+        if r.status_code != 200:
+
+            raise Exception(
+                "3x-ui login failed"
+            )
+
+
+        result = r.json()
+
+
+        if not result.get("success", False):
+
+            raise Exception(
+                result
+            )
+
+
+        return True
+
+
+
+    # ----------------------
+    # UUID
+    # ----------------------
+
+    def generate_uuid(self):
+
+        return str(uuid.uuid4())
+
+
+
+    # ----------------------
+    # EXPIRATION
+    # ----------------------
+
+    def expire_time(self, days):
+
+        return int(
+            (time.time() + days * 86400) * 1000
+        )
+
+
+
+    # ----------------------
+    # SELECT INBOUND
+    # ----------------------
+
+    def select_inbound(self):
+
+        # فعلا چرخشی
+        # بعدا مصرف واقعی اضافه می‌کنیم
+
+        return random.choice(
+            self.inbounds
+        )
+
+
+
+    # ----------------------
+    # CREATE CLIENT
+    # ----------------------
+
+    def create_client(
+        self,
+        email,
+        volume_gb,
+        days
+    ):
+
+
+        inbound_id = self.select_inbound()
+
+        client_uuid = self.generate_uuid()
+
+
+        total_bytes = (
+            volume_gb
+            *
+            1024
+            *
+            1024
+            *
+            1024
+        )
+
+
+        expire = self.expire_time(
+            days
+        )
+
+
+        sub_id = uuid.uuid4().hex[:16]
+
+
+
+        client = {
+
+            "id": client_uuid,
+
             "email": email,
-            "port": port
+
+            "flow": "",
+
+            "limitIp": 0,
+
+            "totalGB": total_bytes,
+
+            "expiryTime": expire,
+
+            "enable": True,
+
+            "tgId": "",
+
+            "subId": sub_id
+
         }
 
-    return None
+
+
+        payload = {
+
+            "id": inbound_id,
+
+            "settings":
+                '{"clients":['
+                +
+                str(client).replace("'", '"')
+                +
+                ']}'
+
+        }
+
+
+
+        url = (
+            f"{self.panel_url}"
+            f"/panel/api/inbounds/addClient"
+        )
+
+
+        r = self.session.post(
+            url,
+            data=payload,
+            timeout=15
+        )
+
+
+
+        try:
+
+            result = r.json()
+
+        except:
+
+            raise Exception(
+                r.text
+            )
+
+
+
+        if not result.get(
+            "success",
+            False
+        ):
+
+            raise Exception(
+                result
+            )
+
+
+
+        return {
+
+            "uuid": client_uuid,
+
+            "email": email,
+
+            "inbound": inbound_id,
+
+            "volume": volume_gb,
+
+            "days": days,
+
+            "expire": expire,
+
+            "subscription":
+                self.subscription_link(sub_id)
+
+        }
+
+
+
+
+    # ----------------------
+    # SUB LINK
+    # ----------------------
+
+    def subscription_link(
+        self,
+        sub_id
+    ):
+
+        return (
+            f"{self.panel_url}"
+            f"/sub/{sub_id}"
+        )
+
+
+
+    # ----------------------
+    # GET INBOUNDS
+    # ----------------------
+
+    def get_inbounds(self):
+
+
+        url = (
+            f"{self.panel_url}"
+            f"/panel/api/inbounds/list"
+        )
+
+
+        r = self.session.get(
+            url
+        )
+
+
+        return r.json()
+
+
+
+    # ----------------------
+    # DELETE CLIENT
+    # ----------------------
+
+    def delete_client(
+        self,
+        inbound_id,
+        client_uuid
+    ):
+
+
+        url = (
+
+            f"{self.panel_url}"
+            f"/panel/api/inbounds/"
+            f"delClient/"
+            f"{inbound_id}/"
+            f"{client_uuid}"
+
+        )
+
+
+        r = self.session.post(
+            url
+        )
+
+
+        return r.json()
+
+
+
+    # ----------------------
+    # DISABLE CLIENT
+    # ----------------------
+
+    def disable_client(
+        self,
+        inbound_id,
+        client_uuid
+    ):
+
+
+        url = (
+
+            f"{self.panel_url}"
+            f"/panel/api/inbounds/"
+            f"updateClient/"
+            f"{client_uuid}"
+
+        )
+
+
+        data = {
+
+            "enable": False
+
+        }
+
+
+        r = self.session.post(
+            url,
+            json=data
+        )
+
+
+        return r.json()
