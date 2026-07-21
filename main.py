@@ -8,6 +8,7 @@ from telegram.ext import (
 import os
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+CARD_NUMBER = os.getenv("CARD_NUMBER")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -39,10 +40,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "buy":
         await query.edit_message_text(
             "🛒 خرید اشتراک\n\n"
-            "لطفاً پلن مورد نظر را انتخاب کنید:\n\n"
             "🥉 یک ماهه - 100GB\n"
             "🥈 سه ماهه - 300GB\n"
-            "🥇 شش ماهه - 700GB"
+            "🥇 شش ماهه - 700GB\n\n"
+            "برای پرداخت گزینه 💳 پرداخت را بزنید."
         )
 
     elif query.data == "my_service":
@@ -52,8 +53,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif query.data == "payment":
         await query.edit_message_text(
-            "💳 پرداخت\n\n"
-            "شماره کارت بزودی قرار می‌گیرد."
+            f"💳 پرداخت\n\n"
+            f"لطفاً مبلغ پلن انتخابی را کارت به کارت کنید.\n\n"
+            f"شماره کارت:\n"
+            f"{CARD_NUMBER}\n\n"
+            "بعد از پرداخت، عکس رسید را ارسال کنید."
         )
 
     elif query.data == "support":
